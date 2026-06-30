@@ -1,0 +1,584 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.container { padding: 1.5rem 0; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.tab { padding: 6px 14px; font-size: 13px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); cursor: pointer; background: var(--color-background-primary); color: var(--color-text-secondary); transition: all .15s; }
+.tab.active { background: var(--color-background-secondary); color: var(--color-text-primary); border-color: var(--color-border-secondary); font-weight: 500; }
+.section { display: none; }
+.section.active { display: block; }
+
+.card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
+.card-sub { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); font-weight: 500; margin-right: 6px; margin-bottom: 4px; }
+.badge-blue { background: var(--color-background-info); color: var(--color-text-info); }
+.badge-green { background: var(--color-background-success); color: var(--color-text-success); }
+.badge-amber { background: var(--color-background-warning); color: var(--color-text-warning); }
+.badge-red { background: var(--color-background-danger); color: var(--color-text-danger); }
+
+.step-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.step-row:last-child { border-bottom: none; }
+.step-num { width: 26px; height: 26px; min-width: 26px; border-radius: 50%; background: var(--color-background-secondary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--color-text-secondary); margin-top: 2px; }
+.step-content { flex: 1; }
+.step-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+.step-detail { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; margin-top: 3px; }
+code { font-family: var(--font-mono); font-size: 12px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 4px; color: var(--color-text-primary); }
+
+.day-header { display: flex; align-items: center; gap: 10px; padding: 10px 0 6px; cursor: pointer; }
+.day-label { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.day-badge { font-size: 11px; padding: 2px 8px; border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--color-text-secondary); }
+.day-body { padding-left: 12px; border-left: 1.5px solid var(--color-border-tertiary); margin-left: 6px; padding-bottom: 8px; }
+.day-block { margin-bottom: 1rem; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; }
+
+.platform-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+.platform-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px; }
+.platform-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+.platform-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+
+.io-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.io-box { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; }
+.io-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-tertiary); margin-bottom: 6px; }
+.io-item { font-size: 13px; color: var(--color-text-secondary); padding: 2px 0; }
+
+.ask-btn { display: inline-block; margin-top: 8px; padding: 5px 12px; font-size: 12px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.ask-btn:hover { background: var(--color-background-secondary); }
+</style>
+
+<div class="container">
+<h2 style="font-size:18px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px;">CivicMind — complete build guide</h2>
+<p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1.5rem;">Platform · what to build · how to build it · inputs & outputs</p>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('start')">Where to start</div>
+  <div class="tab" onclick="showTab('platform')">Platform setup</div>
+  <div class="tab" onclick="showTab('day1')">Day 1</div>
+  <div class="tab" onclick="showTab('day2')">Day 2</div>
+  <div class="tab" onclick="showTab('day3')">Day 3 ⚡</div>
+  <div class="tab" onclick="showTab('day4')">Day 4</div>
+  <div class="tab" onclick="showTab('day5')">Day 5</div>
+  <div class="tab" onclick="showTab('day6')">Day 6–7</div>
+</div>
+
+<!-- START TAB -->
+<div class="section active" id="tab-start">
+  <div class="card">
+    <div class="card-title">What you are building</div>
+    <div class="card-sub" style="margin-bottom:10px;">CivicMind is a multi-agent urban intelligence platform. The core idea: a single civic complaint is noise — a cluster of 3 correlated complaints in 300m over 72 hours is a signal of a deeper infrastructure failure. The system detects that signal automatically, reasons about the cause, and drafts the action for a human to approve.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <span class="badge badge-blue">Next.js 14 PWA</span>
+      <span class="badge badge-blue">FastAPI (Python)</span>
+      <span class="badge badge-blue">Supabase (PostgreSQL + pgvector)</span>
+      <span class="badge badge-blue">Gemini 2.5 Pro</span>
+      <span class="badge badge-green">Google Maps JS</span>
+      <span class="badge badge-green">Redis</span>
+      <span class="badge badge-amber">Vercel + Cloud Run</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">The 3 interfaces you are building</div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Citizen PWA <span class="badge badge-blue">mobile-first</span></div>
+        <div class="step-detail">A simple form: photo upload + GPS location + short description. The citizen submits. That is all they do. The system does the rest. This is the demo entry point — the judge scans a QR code and submits a report live.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Officer Copilot Dashboard <span class="badge badge-amber">demo centerpiece</span></div>
+        <div class="step-detail">A desktop dashboard showing active clusters, risk briefs, the Evidence Web graph, and draft emails to ward engineers. This is where Urban Autopsy Mode runs visibly. The judge watches this screen during the demo.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Public Heatmap <span class="badge badge-green">read-only</span></div>
+        <div class="step-detail">A Google Maps view showing risk clusters color-coded by severity, plus predicted hotspots. No login required. Shows the city's live status to anyone.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">The signature feature: Urban Autopsy Mode</div>
+    <div class="card-sub" style="margin-bottom:12px;">When a new report arrives, this runs automatically. The judge watches it happen in real time. This is what wins the hackathon.</div>
+    <div class="step-row">
+      <div class="step-num" style="background:var(--color-background-warning);color:var(--color-text-warning);">1</div>
+      <div class="step-content"><div class="step-title">Intake Agent</div><div class="step-detail">Gemini Vision classifies the photo. Extracts: issue type, severity 1–5, area affected, surface type.</div></div>
+    </div>
+    <div class="step-row">
+      <div class="step-num" style="background:var(--color-background-warning);color:var(--color-text-warning);">2</div>
+      <div class="step-content"><div class="step-title">Evidence Agent</div><div class="step-detail">Deep Gemini Vision forensics. Queries all issues within 300m from the past 90 days. Pulls infrastructure maintenance history for the zone.</div></div>
+    </div>
+    <div class="step-row">
+      <div class="step-num" style="background:var(--color-background-danger);color:var(--color-text-danger);">3</div>
+      <div class="step-content"><div class="step-title">Synthesis Agent ← most important</div><div class="step-detail">Gemini 2.5 Pro in a multi-turn function-calling loop. Calls tools, reasons about causal chains, assigns confidence scores, produces the Risk Brief JSON.</div></div>
+    </div>
+    <div class="step-row">
+      <div class="step-num" style="background:var(--color-background-info);color:var(--color-text-info);">4</div>
+      <div class="step-content"><div class="step-title">Authority Copilot</div><div class="step-detail">Takes the Risk Brief. Finds the responsible ward officer. Generates a professional draft email. One click to send.</div></div>
+    </div>
+    <button class="ask-btn" onclick="sendPrompt('Walk me through exactly what code I need to write for the Synthesis Agent in CivicMind')">Ask Claude to walk through Synthesis Agent code ↗</button>
+  </div>
+</div>
+
+<!-- PLATFORM TAB -->
+<div class="section" id="tab-platform">
+  <div class="card">
+    <div class="card-title">Accounts to create first (do this today, takes 30 min)</div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Google AI Studio <span class="badge badge-red">most important</span></div>
+        <div class="step-detail">Go to <code>aistudio.google.com</code> → create project → get API key. This is your Gemini 2.5 Pro key. Test it immediately with a simple call. Store as <code>GEMINI_API_KEY</code>.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Supabase</div>
+        <div class="step-detail">Go to <code>supabase.com</code> → new project → free tier is fine. You get PostgreSQL + pgvector + Auth + Realtime + Storage all in one. Copy your project URL and anon key.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Google Cloud Console</div>
+        <div class="step-detail">Go to <code>console.cloud.google.com</code> → new project → enable: Maps JavaScript API, Geocoding API, Street View Static API. Get an API key. Store as <code>GOOGLE_MAPS_KEY</code>.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Vercel + GitHub</div>
+        <div class="step-detail">Create a GitHub repo named <code>civicmind</code>. Connect it to Vercel. Every push to main auto-deploys. Free tier is fine.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Upstash Redis</div>
+        <div class="step-detail">Go to <code>upstash.com</code> → free Redis instance. Used for agent state, priority queue, and pub/sub between agents. Copy REST URL and token.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Folder structure to create</div>
+    <div class="card-sub" style="font-family:var(--font-mono);font-size:12px;line-height:1.9;white-space:pre;">civicmind/
+├── frontend/          ← Next.js 14 app
+│   ├── app/
+│   │   ├── citizen/   ← report form PWA
+│   │   ├── officer/   ← copilot dashboard
+│   │   └── map/       ← public heatmap
+│   └── components/
+│       ├── EvidenceWeb.tsx
+│       ├── RiskBrief.tsx
+│       └── AgentTrace.tsx
+├── backend/           ← FastAPI
+│   ├── agents/
+│   │   ├── intake.py
+│   │   ├── evidence.py
+│   │   ├── synthesis.py
+│   │   └── copilot.py
+│   ├── tools/         ← function-call tools
+│   ├── db/            ← Supabase queries
+│   └── main.py
+└── scripts/
+    └── seed_demo_data.py</div>
+  </div>
+
+  <div class="platform-row">
+    <div class="platform-card">
+      <div class="platform-name">Frontend</div>
+      <div class="platform-desc">Next.js 14 with TypeScript. Deployed on Vercel. Uses shadcn/ui for components — install it on day 1 so UI is fast to build on day 4.</div>
+    </div>
+    <div class="platform-card">
+      <div class="platform-name">Backend</div>
+      <div class="platform-desc">FastAPI in Python. Deployed on Google Cloud Run. All Gemini agent logic lives here. Exposes REST endpoints + WebSocket for real-time updates.</div>
+    </div>
+    <div class="platform-card">
+      <div class="platform-name">Database</div>
+      <div class="platform-desc">Supabase PostgreSQL with pgvector extension enabled. Run: <code>CREATE EXTENSION vector;</code> in the SQL editor before anything else.</div>
+    </div>
+    <div class="platform-card">
+      <div class="platform-name">AI</div>
+      <div class="platform-desc">Gemini 2.5 Pro via Google AI Studio API. Use <code>google-generativeai</code> Python SDK. Model string: <code>gemini-2.5-pro</code>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- DAY 1 -->
+<div class="section" id="tab-day1">
+  <div style="margin-bottom:1rem;"><span class="badge badge-blue">Day 1</span><span style="font-size:14px;font-weight:500;color:var(--color-text-primary);">Foundations — get a report into the database</span></div>
+  
+  <div class="card">
+    <div class="card-title">What you are building today</div>
+    <div class="card-sub">A citizen submits a photo + location → Gemini Vision classifies it → it is saved to PostgreSQL. That's the full loop for day 1. Nothing else.</div>
+    <div class="io-grid">
+      <div class="io-box">
+        <div class="io-label">Input</div>
+        <div class="io-item">📷 Photo (JPEG/PNG, up to 5MB)</div>
+        <div class="io-item">📍 GPS coordinates (lat, lng)</div>
+        <div class="io-item">📝 Short description (optional)</div>
+      </div>
+      <div class="io-box">
+        <div class="io-label">Output</div>
+        <div class="io-item">✅ Issue saved to DB with UUID</div>
+        <div class="io-item">🏷️ Category (pothole / leak / etc)</div>
+        <div class="io-item">⚠️ Severity score (1–5)</div>
+        <div class="io-item">📊 Gemini analysis JSON</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Step-by-step for day 1</div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Create Supabase tables</div>
+        <div class="step-detail">In Supabase SQL editor, run: <code>CREATE EXTENSION vector;</code> then create the <code>issues</code> table with columns: id, category, severity, lat, lng, description, images (text[]), status, embedding (vector(768)), gemini_analysis (jsonb), created_at.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">FastAPI: POST /reports endpoint</div>
+        <div class="step-detail">Accepts multipart form: image file + lat + lng + description. Saves image to Supabase Storage. Returns issue_id. This is the backend entry point.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Intake Agent: call Gemini Vision</div>
+        <div class="step-detail">After saving the image, call Gemini 2.5 Pro with the image + this system prompt: <code>"Classify this civic issue. Return JSON: {issue_type, severity (1-5), area_affected_m2, infrastructure_type, confidence}"</code>. Save the JSON response to <code>gemini_analysis</code> column.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Frontend: citizen report form</div>
+        <div class="step-detail">Next.js page at <code>/citizen</code>. Three fields: camera/file input, a "Use my location" button (browser Geolocation API), text area. Submit button POSTs to your FastAPI. Show a success screen with the issue_id.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Verify end-to-end</div>
+        <div class="step-detail">Submit a real photo of a road. Check Supabase table — the row should appear with the Gemini classification JSON filled in. If this works, day 1 is done.</div>
+      </div>
+    </div>
+    <button class="ask-btn" onclick="sendPrompt('Write the FastAPI POST /reports endpoint code for CivicMind that accepts an image + lat/lng and calls Gemini Vision to classify it')">Get the FastAPI code ↗</button>
+  </div>
+</div>
+
+<!-- DAY 2 -->
+<div class="section" id="tab-day2">
+  <div style="margin-bottom:1rem;"><span class="badge badge-blue">Day 2</span><span style="font-size:14px;font-weight:500;color:var(--color-text-primary);">Evidence Agent + seed demo data</span></div>
+  
+  <div class="card">
+    <div class="card-title">What you are building today</div>
+    <div class="card-sub">Deep image forensics with Gemini Vision. Semantic embeddings with pgvector. And critically — seed 50+ fake historical issues across 3 zones in Ghaziabad so the Synthesis Agent has data to reason over on Day 3.</div>
+    <div class="io-grid">
+      <div class="io-box">
+        <div class="io-label">Input</div>
+        <div class="io-item">🖼️ 1–5 images of the issue</div>
+        <div class="io-item">📍 Coordinates (lat, lng)</div>
+        <div class="io-item">📜 Historical issues nearby (DB query)</div>
+      </div>
+      <div class="io-box">
+        <div class="io-label">Output</div>
+        <div class="io-item">🔬 Technical forensics JSON</div>
+        <div class="io-item">🧠 768-dim embedding vector</div>
+        <div class="io-item">📚 Location history summary</div>
+        <div class="io-item">🔁 Duplicate flag (if similar exists)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Step-by-step for day 2</div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Evidence Agent: deep Gemini Vision call</div>
+        <div class="step-detail">Different prompt from Day 1's classification. This one says: <code>"You are an infrastructure forensics expert. Describe: physical dimensions estimate, likely root cause, infrastructure systems affected, age of damage, risk of cascading failure. Be technical."</code> Save as <code>evidence_analysis</code> in the issues table.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Generate and store embeddings</div>
+        <div class="step-detail">Use <code>models/text-embedding-004</code> via the Gemini API on the issue description + category text. Store the 768-dim vector in the <code>embedding</code> column. This enables semantic similarity search later.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">pgvector similarity search function</div>
+        <div class="step-detail">Write a Supabase SQL function: <code>find_similar_issues(embedding vector, radius_m float, days_back int)</code> that returns all issues within X meters and Y days ordered by cosine similarity. This is used by the Synthesis Agent tomorrow.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Seed 50 demo issues — most important task of day 2</div>
+        <div class="step-detail">Write <code>seed_demo_data.py</code>. Create 3 zones in Ghaziabad. Zone A (Sector 7B): 4 issues over 5 days — 2 potholes, 1 water leak, 1 pavement subsidence — all within 300m. This is the cluster that Urban Autopsy Mode will detect during the demo. Zone B: 6 unrelated scattered issues (negative space). Zone C: 3 older issues from 6 months ago showing the historical pattern. Hardcode the lat/lngs to real Ghaziabad coordinates.</div>
+      </div>
+    </div>
+    <button class="ask-btn" onclick="sendPrompt('Write the seed_demo_data.py script for CivicMind that creates 50 fake historical issues in Ghaziabad with realistic lat/lng coordinates and timestamps')">Get the seed script ↗</button>
+  </div>
+</div>
+
+<!-- DAY 3 -->
+<div class="section" id="tab-day3">
+  <div style="margin-bottom:1rem;"><span class="badge badge-red">Day 3 ⚡ Critical</span><span style="font-size:14px;font-weight:500;color:var(--color-text-primary);">Synthesis Agent — the heart of the system</span></div>
+  
+  <div class="card" style="border-color:var(--color-border-danger);">
+    <div class="card-title" style="color:var(--color-text-danger);">If Day 3 slips, cut features. Do not skip this.</div>
+    <div class="card-sub">The Synthesis Agent is the only part of CivicMind that no other team will build. Everything else — the UI, the heatmap, the email drafts — is dressing. This is the actual agentic intelligence. Give it the full day.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">What the Synthesis Agent does</div>
+    <div class="card-sub" style="margin-bottom:12px;">It runs Gemini 2.5 Pro in a <strong>multi-turn function-calling loop</strong>. Gemini decides which tools to call, calls them, sees the results, calls more tools, and eventually produces a causal hypothesis. Your code does not decide what to look for — Gemini does.</div>
+    <div class="io-grid">
+      <div class="io-box">
+        <div class="io-label">Input</div>
+        <div class="io-item">🆕 Newly submitted issue (trigger)</div>
+        <div class="io-item">📍 Its coordinates</div>
+        <div class="io-item">🗃️ Access to all tools below</div>
+      </div>
+      <div class="io-box">
+        <div class="io-label">Output (Risk Brief JSON)</div>
+        <div class="io-item">🔴 risk_level: CRITICAL/HIGH/MEDIUM</div>
+        <div class="io-item">💡 causal_hypothesis (text)</div>
+        <div class="io-item">🔗 evidence_chain (array of issues)</div>
+        <div class="io-item">👥 affected_residents (int)</div>
+        <div class="io-item">💰 cost_estimate (₹)</div>
+        <div class="io-item">📊 confidence (0.0–1.0)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">The 4 tools you must implement for the function-calling loop</div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title"><code>query_nearby_issues(lat, lng, radius_meters, days_back, categories)</code></div>
+        <div class="step-detail">Queries your PostgreSQL. Returns all issues within the radius and time window. Gemini calls this first to gather the cluster. This is a simple SQL query — 20 lines of Python.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title"><code>fetch_infrastructure_history(zone_id, years_back)</code></div>
+        <div class="step-detail">Returns maintenance records from your seeded historical data. For demo, this is a JSON file you create — real city data would come from a municipal API. Include water main age, last repair date, material type.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title"><code>assess_causal_chain(issue_ids, hypothesis)</code></div>
+        <div class="step-detail">This is a recursive Gemini call inside the loop. Feeds the listed issues + hypothesis back into Gemini and asks it to score the confidence. Returns a float 0–1.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title"><code>generate_risk_brief(cluster_data)</code></div>
+        <div class="step-detail">Takes everything Gemini has gathered. Makes a final Gemini call with a structured output schema to produce the Risk Brief JSON. This is the terminal step of the loop.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">The exact Synthesis Agent system prompt</div>
+    <div class="card-sub" style="font-family:var(--font-mono);font-size:12px;line-height:1.8;background:var(--color-background-secondary);padding:12px;border-radius:var(--border-radius-md);margin-top:8px;white-space:pre-wrap;">You are CivicMind's Urban Intelligence Agent for Ghaziabad.
+
+A new civic issue has been reported. Your task:
+1. Call query_nearby_issues to find related reports in the area
+2. Call fetch_infrastructure_history for the zone  
+3. Identify causal relationships between the issues
+4. Generate 1-3 hypotheses about the root cause
+5. Assign confidence scores using assess_causal_chain
+6. Call generate_risk_brief with your findings
+
+Rules:
+- Use tools before concluding. Do not guess without data.
+- If no cluster exists (fewer than 2 related issues), output risk_level: LOW
+- Be specific: name the infrastructure (e.g. "water main on NH58")
+- Estimate affected_residents from the 500m population density</div>
+    <button class="ask-btn" onclick="sendPrompt('Write the complete Python code for the CivicMind Synthesis Agent using the Gemini 2.5 Pro function calling API with all 4 tools implemented')">Get the full Synthesis Agent code ↗</button>
+  </div>
+</div>
+
+<!-- DAY 4 -->
+<div class="section" id="tab-day4">
+  <div style="margin-bottom:1rem;"><span class="badge badge-blue">Day 4</span><span style="font-size:14px;font-weight:500;color:var(--color-text-primary);">Frontend build sprint</span></div>
+  
+  <div class="card">
+    <div class="card-title">What you are building today</div>
+    <div class="card-sub">The full frontend. Every screen. Do not polish — get all the data flowing. Polish is Day 6. Use shadcn/ui components for speed. The demo path screens come first.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Screen 1: Officer Copilot Dashboard (most important)</div>
+    <div class="step-row">
+      <div class="step-num">A</div>
+      <div class="step-content">
+        <div class="step-title">Active clusters panel (left sidebar)</div>
+        <div class="step-detail">List of clusters ordered by risk_level. Each row shows: red/amber/green dot + zone name + issue count + confidence %. Clicking a row loads the full Risk Brief.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">B</div>
+      <div class="step-content">
+        <div class="step-title">Risk Brief card (center)</div>
+        <div class="step-detail">Shows: risk level badge, causal_hypothesis text in large readable font, evidence_chain list with each connected issue, affected_residents count, cost comparison (preventive vs reactive), confidence score. This is what judges read during the demo.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">C</div>
+      <div class="step-content">
+        <div class="step-title">Agent execution trace (right panel)</div>
+        <div class="step-detail">Real-time log of what the Synthesis Agent did. Shows each tool call as it happened: <code>→ query_nearby_issues (300m, 90 days) → Found 3 issues → fetch_infrastructure_history → Water main age: 47yr → confidence: 0.73</code>. Stream this via WebSocket. This is the "watching the city think" moment.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">D</div>
+      <div class="step-content">
+        <div class="step-title">Draft email + "Send to Officer" button</div>
+        <div class="step-detail">Show the Gemini-generated email below the brief. Big "Review and Send" button. On click, show a confirmation modal. This is the one-click autonomous action demo moment.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Screen 2: Evidence Web (D3.js force graph)</div>
+    <div class="card-sub" style="margin-bottom:10px;">A force-directed graph where each issue is a node, and edges represent causal connections weighted by confidence. Node color = issue type. Edge thickness = confidence score.</div>
+    <div class="step-row">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">Install D3.js in your Next.js project</div>
+        <div class="step-detail"><code>npm install d3</code>. Create a React component <code>EvidenceWeb.tsx</code> that takes a cluster's evidence_chain array as props and renders the graph. Nodes are clickable — clicking shows the issue's photo and Gemini analysis.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Screen 3: Google Maps heatmap</div>
+    <div class="card-sub">Use the Google Maps JavaScript API's HeatmapLayer. Fetch all cluster center coordinates + risk scores from your API. Map risk_level to color: CRITICAL = red, HIGH = amber, MEDIUM = yellow. Add a toggle to show predicted hotspots as pulsing markers.</div>
+    <button class="ask-btn" onclick="sendPrompt('Write the EvidenceWeb.tsx React component using D3.js force-directed graph for CivicMind, taking an evidence_chain array as props')">Get the D3 Evidence Web component ↗</button>
+  </div>
+</div>
+
+<!-- DAY 5 -->
+<div class="section" id="tab-day5">
+  <div style="margin-bottom:1rem;"><span class="badge badge-blue">Day 5</span><span style="font-size:14px;font-weight:500;color:var(--color-text-primary);">Authority Copilot + Risk Assessment + demo wow moments</span></div>
+  
+  <div class="card">
+    <div class="card-title">Authority Copilot Agent</div>
+    <div class="card-sub" style="margin-bottom:10px;">Takes a Risk Brief JSON and generates a ready-to-send email to the responsible ward officer. The Gemini prompt is critical — the output must sound like a real government communication.</div>
+    <div class="io-grid">
+      <div class="io-box">
+        <div class="io-label">Input</div>
+        <div class="io-item">📋 Risk Brief JSON</div>
+        <div class="io-item">👤 Officer name + email + zone</div>
+      </div>
+      <div class="io-box">
+        <div class="io-label">Output</div>
+        <div class="io-item">📧 Subject line</div>
+        <div class="io-item">📝 Professional email body</div>
+        <div class="io-item">📑 Attached work order JSON</div>
+      </div>
+    </div>
+    <div class="card-sub" style="margin-top:10px;">Prompt template: <code>"You are communicating on behalf of the CivicMind Urban Intelligence System to [Officer Name], Ward Engineer, Ghaziabad. Write a professional briefing email. Tone: factual, urgent, actionable. Include: summary, evidence, recommended action, cost estimate. Never cause panic. Keep under 200 words."</code></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">The 3 demo wow moments to build today</div>
+    <div class="step-row">
+      <div class="step-num" style="background:var(--color-background-danger);color:var(--color-text-danger);">!</div>
+      <div class="step-content">
+        <div class="step-title">Live re-escalation event</div>
+        <div class="step-detail">Build a timed trigger: 90 seconds into the demo, an API call automatically seeds a 2nd new issue in the same cluster zone. The Synthesis Agent re-runs. The risk level jumps from HIGH to CRITICAL on screen. Affected residents count updates. The email draft regenerates. No human clicked anything. This is the most powerful agentic depth demonstration possible.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num" style="background:var(--color-background-info);color:var(--color-text-info);">!</div>
+      <div class="step-content">
+        <div class="step-title">Gemini chain-of-thought reveal</div>
+        <div class="step-detail">Add a "Show reasoning" toggle on the Risk Brief card. Clicking it expands to show Gemini's raw reasoning text — the agent explaining to itself why the causal chain holds. Judges from DeepMind will notice this immediately.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num" style="background:var(--color-background-warning);color:var(--color-text-warning);">!</div>
+      <div class="step-content">
+        <div class="step-title">Dissenting evidence panel</div>
+        <div class="step-detail">Below the evidence chain, show a small "Contrary signals" section: "1 report in this cluster was excluded — flagged as low-credibility (user filed 2 false reports previously). CivicMind adjusted confidence accordingly." This shows the system is doing real epistemics, not just pattern matching.</div>
+      </div>
+    </div>
+    <button class="ask-btn" onclick="sendPrompt('Write the Authority Copilot Agent Python code for CivicMind that generates a professional email draft using Gemini 2.5 Pro')">Get Authority Copilot code ↗</button>
+  </div>
+</div>
+
+<!-- DAY 6-7 -->
+<div class="section" id="tab-day6">
+  <div style="margin-bottom:1rem;"><span class="badge badge-green">Day 6–7</span><span style="font-size:14px;font-weight:500;color:var(--color-text-primary);">Demo data, polish, rehearsal, submission</span></div>
+  
+  <div class="card">
+    <div class="card-title">The perfect demo story arc (seed this data precisely)</div>
+    <div class="step-row">
+      <div class="step-num">A</div>
+      <div class="step-content">
+        <div class="step-title">Zone A — Sector 7B, Ghaziabad (the cluster zone)</div>
+        <div class="step-detail">4 pre-seeded issues over 5 days: pothole (day -5), water leak 80m away (day -3), pavement subsidence (day -2), second pothole (day -1). Infrastructure history: water main age 47 years, last repair 2019. When the demo report comes in, these trigger a 73% confidence CRITICAL brief.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">B</div>
+      <div class="step-content">
+        <div class="step-title">Zone B — scattered (negative space)</div>
+        <div class="step-detail">5–6 unrelated issues spread across 2km. Shows the system correctly does NOT cluster these. Demonstrates the system isn't over-triggering.</div>
+      </div>
+    </div>
+    <div class="step-row">
+      <div class="step-num">C</div>
+      <div class="step-content">
+        <div class="step-title">Zone C — prediction hotspot (no reports yet)</div>
+        <div class="step-detail">Zero citizen reports. But 5-year historical data shows a pipe in this zone failed in 2019 and is approaching its failure window again. Shows as a pulsing amber marker on the heatmap. This is the "prediction before citizens suffer" moment.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Day 6 checklist (integration + polish)</div>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-content"><div class="step-title">Full demo path runs 5 times without error</div><div class="step-detail">Citizen submits photo → Synthesis runs → Risk Brief appears → Agent trace streams → Email draft appears → Send button works. All 5 in a row. No edge cases.</div></div></div>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-content"><div class="step-title">Synthesis Agent completes in under 15 seconds</div><div class="step-detail">If it's slower, reduce context. Summarize historical data instead of sending raw. Use Gemini Flash for the initial classification step.</div></div></div>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-content"><div class="step-title">Deploy to production</div><div class="step-detail">Frontend on Vercel. Backend on Google Cloud Run. Test the live URLs — not localhost. Judges will use the live URL.</div></div></div>
+    <div class="step-row"><div class="step-num">✓</div><div class="step-content"><div class="step-title">Record backup video</div><div class="step-detail">Record the full 5-minute demo on your best run. If the live internet fails during the presentation, you play this. Non-negotiable.</div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Day 7: the one thing that beats everything</div>
+    <div class="card-sub" style="margin-bottom:10px;">During your demo, look at the judges and say: "You can submit a report right now if you'd like" — show a QR code linking to your citizen PWA. If a judge scans it and submits, the system processes it live in front of them. If no one scans, you already have the seeded path. The offer alone signals complete confidence in your system.</div>
+    <button class="ask-btn" onclick="sendPrompt('Write the complete 5-minute CivicMind demo script with exact words to say at each moment and cues for when to click what')">Get the full demo script ↗</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

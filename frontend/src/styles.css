@@ -1,0 +1,145 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@import "@fontsource/inter/300.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+@import "@fontsource/plus-jakarta-sans/800.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-paper: var(--paper);
+  --color-obsidian: var(--obsidian);
+  --color-ink: var(--ink);
+  --color-slate-muted: var(--slate-muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
+  --color-background: var(--canvas);
+  --color-foreground: var(--obsidian);
+  --color-card: var(--paper);
+  --color-card-foreground: var(--obsidian);
+  --color-popover: var(--paper);
+  --color-popover-foreground: var(--obsidian);
+  --color-primary: var(--obsidian);
+  --color-primary-foreground: var(--paper);
+  --color-secondary: var(--paper);
+  --color-secondary-foreground: var(--obsidian);
+  --color-muted: var(--paper);
+  --color-muted-foreground: var(--slate-muted);
+  --color-accent-foreground: var(--paper);
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: var(--paper);
+  --color-border: var(--border-subtle);
+  --color-input: var(--border-subtle);
+  --color-ring: var(--accent);
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  --canvas: #fcfcfd;
+  --paper: #ffffff;
+  --obsidian: #09090b;
+  --ink: #18181b;
+  --slate-muted: #71717a;
+  --accent: #0052ff;
+  --accent-soft: rgba(0, 82, 255, 0.08);
+  --border-subtle: #e4e4e7;
+  --border-strong: #d4d4d8;
+}
+
+.dark {
+  --canvas: #09090b;
+  --paper: #18181b;
+  --obsidian: #fafafa;
+  --ink: #e4e4e7;
+  --slate-muted: #71717a;
+  --accent: #4c8bff;
+  --accent-soft: rgba(76, 139, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-obsidian);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+}
+
+@utility grid-pattern {
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+@utility hairline-x {
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    var(--border-subtle) 20%,
+    var(--border-subtle) 80%,
+    transparent
+  );
+  height: 1px;
+}
+
+@utility glass {
+  background: color-mix(in oklab, var(--paper) 70%, transparent);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility text-pretty {
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,45 @@
+name: Deploy Frontend to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  deploy:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Production Env File
+        run: |
+          echo "VITE_API_URL=https://polaris-backend-937410737699.us-central1.run.app" > frontend/.env.production
+          echo "VITE_WS_URL=wss://polaris-backend-937410737699.us-central1.run.app" >> frontend/.env.production
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/937410737699/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-deployer@polaris-500215.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: polaris-500215
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy polaris \
+            --source frontend \
+            --region us-central1 \
+            --platform managed \
+            --allow-unauthenticated
