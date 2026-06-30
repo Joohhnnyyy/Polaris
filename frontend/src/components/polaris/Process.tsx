@@ -397,9 +397,18 @@ export function Process() {
               </div>
 
               <div className="mt-8 font-mono text-[11px] text-slate-muted space-y-1.5 pt-6 border-t border-border-subtle">
-                <div>03 · stages</div>
-                <div>04 · agent classes</div>
-                <div>∞ · signals/sec</div>
+                <div className="flex items-center gap-3">
+                  <div className="size-1.5 invisible" />
+                  <span>03 · stages</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="size-1.5 invisible" />
+                  <span>04 · agent classes</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="size-1.5 invisible" />
+                  <span>∞ · signals/sec</span>
+                </div>
               </div>
             </div>
           </div>
