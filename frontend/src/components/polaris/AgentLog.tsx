@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL, safeFetchArray } from "@/lib/api";
 
 const categoryIcon: Record<string, string> = {
   "Water Leak": "◈",
@@ -16,8 +16,8 @@ export function AgentLog() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/issues`).then((r) => r.json()).catch(() => []),
-      fetch(`${API_URL}/clusters`).then((r) => r.json()).catch(() => []),
+      safeFetchArray(`${API_URL}/issues`),
+      safeFetchArray(`${API_URL}/clusters`),
     ]).then(([iss, cls]) => {
       setIssues(iss);
       setClusters(cls);

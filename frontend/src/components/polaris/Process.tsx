@@ -48,17 +48,22 @@ function IngestionDiagram() {
               {[0, 1, 2, 3, 4].map((p) => (
                 <motion.div
                   key={p}
-                  className="absolute top-1/2 -translate-y-1/2 rounded-full"
-                  style={{ width: 6, height: 6, background: ch.color, boxShadow: `0 0 8px ${ch.color}` }}
-                  initial={{ x: -10, opacity: 0 }}
-                  animate={{ x: "calc(100% + 10px)", opacity: [0, 1, 1, 0] }}
+                  className="absolute inset-y-0"
+                  style={{ left: "-10px", width: "calc(100% + 20px)" }}
+                  initial={{ x: "-100%", opacity: 0 }}
+                  animate={{ x: "0%", opacity: [0, 1, 1, 0] }}
                   transition={{
                     duration: 2.2,
                     delay: ch.delay + p * 0.44,
                     repeat: Infinity,
                     ease: "linear",
                   }}
-                />
+                >
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2 right-0 rounded-full"
+                    style={{ width: 6, height: 6, background: ch.color, boxShadow: `0 0 8px ${ch.color}` }}
+                  />
+                </motion.div>
               ))}
               {/* Baseline */}
               <div className="absolute inset-x-0 top-1/2 -translate-y-px h-px"

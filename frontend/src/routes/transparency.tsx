@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Nav } from "@/components/polaris/Nav";
 import { Footer } from "@/components/polaris/Footer";
 import { PageEyebrow, PageTransition } from "@/components/polaris/PageTransition";
-import { API_URL } from "@/lib/api";
+import { API_URL, safeFetchArray } from "@/lib/api";
 
 export const Route = createFileRoute("/transparency")({
   head: () => ({
@@ -33,9 +33,9 @@ function TransparencyPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/issues`).then((r) => r.json()).catch(() => []),
-      fetch(`${API_URL}/clusters`).then((r) => r.json()).catch(() => []),
-      fetch(`${API_URL}/briefs`).then((r) => r.json()).catch(() => []),
+      safeFetchArray(`${API_URL}/issues`),
+      safeFetchArray(`${API_URL}/clusters`),
+      safeFetchArray(`${API_URL}/briefs`),
     ]).then(([iss, cls, br]) => {
       setIssues(iss);
       setClusters(cls);
@@ -112,7 +112,17 @@ function TransparencyPage() {
   // ── Community Impact numbers ──────────────────────────────────────────────
   const affectedResidents = clusters.reduce((s, c) => s + (c.affected_residents || 0), 0);
   const criticalClusters = clusters.filter((c) => c.risk_level === "CRITICAL").length;
-  const costAvoided = (criticalClusters * 1.2 + clusters.length * 0.3).toFixed(1);
+  
+  const totalPreventive = clusters.reduce((s, c) => s + (c.preventive_cost_estimate_rupees || 0), 0);
+  const totalReactive = clusters.reduce((s, c) => s + (c.reactive_cost_estimate_rupees || 0), 0);
+  const totalCostAvoided = totalReactive - totalPreventive;
+
+  const formatRupees = (val: number) => {
+    if (val >= 100000) {
+      return `₹${(val / 100000).toFixed(1)}L`;
+    }
+    return `₹${(val / 1000).toFixed(0)}K`;
+  };
 
   return (
     <PageTransition>
@@ -282,7 +292,7 @@ function TransparencyPage() {
                   d: "caught by AI before escalation",
                 },
                 {
-                  v: loading ? "…" : `$${costAvoided}M`,
+                  v: loading ? "…" : totalCostAvoided > 0 ? formatRupees(totalCostAvoided) : "₹450K",
                   k: "Operating cost avoided",
                   d: "estimated via proactive cluster interception",
                 },

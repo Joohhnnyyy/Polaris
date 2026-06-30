@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import gisMap from "@/assets/gis-map.jpg";
-import { API_URL } from "@/lib/api";
+import { API_URL, safeFetchArray } from "@/lib/api";
 
 const riskColor: Record<string, string> = {
   CRITICAL: "bg-red-500",
@@ -17,9 +17,9 @@ export function OfficerCommand() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/clusters`).then((r) => r.json()).catch(() => []),
-      fetch(`${API_URL}/issues`).then((r) => r.json()).catch(() => []),
-      fetch(`${API_URL}/briefs`).then((r) => r.json()).catch(() => []),
+      safeFetchArray(`${API_URL}/clusters`),
+      safeFetchArray(`${API_URL}/issues`),
+      safeFetchArray(`${API_URL}/briefs`),
     ]).then(([cls, iss, br]) => {
       setClusters(cls);
       setIssues(iss);

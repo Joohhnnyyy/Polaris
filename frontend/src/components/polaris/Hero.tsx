@@ -1,7 +1,7 @@
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
 import heroCity from "@/assets/hero-city.jpg";
-import { API_URL } from "@/lib/api";
+import { API_URL, safeFetchArray } from "@/lib/api";
 
 const words = ["The", "intelligence", "layer", "for", "the", "modern", "city."];
 
@@ -11,8 +11,8 @@ export function Hero() {
   const [clusterCount, setClusterCount] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/issues`).then((r) => r.json()).then((d) => setIssueCount(d.length)).catch(() => {});
-    fetch(`${API_URL}/clusters`).then((r) => r.json()).then((d) => setClusterCount(d.length)).catch(() => {});
+    safeFetchArray(`${API_URL}/issues`).then((d) => setIssueCount(d.length));
+    safeFetchArray(`${API_URL}/clusters`).then((d) => setClusterCount(d.length));
   }, []);
 
   const { scrollYProgress } = useScroll({
@@ -88,25 +88,26 @@ export function Hero() {
 
           <h1 className="font-display font-extrabold tracking-[-0.035em] leading-[1.02] text-balance text-[clamp(2.75rem,7vw,5.5rem)] mb-10">
             {words.map((w, i) => (
-              <motion.span
+              <span
                 key={i}
-                initial={{ y: "110%", opacity: 0 }}
-                animate={{ y: "0%", opacity: 1 }}
-                transition={{
-                  duration: 0.9,
-                  delay: 0.15 + i * 0.06,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-                className={`inline-block mr-[0.22em] ${
-                  w === "modern" || w === "city." ? "text-accent" : ""
-                }`}
-                style={{
-                  // wrap each word so its slide-up clips behind a hidden mask
-                  overflow: "hidden",
-                }}
+                className="inline-block overflow-hidden mr-[0.22em]"
+                style={{ paddingBottom: "0.18em", marginBottom: "-0.18em" }}
               >
-                {w}
-              </motion.span>
+                <motion.span
+                  initial={{ y: "110%", opacity: 0 }}
+                  animate={{ y: "0%", opacity: 1 }}
+                  transition={{
+                    duration: 0.9,
+                    delay: 0.15 + i * 0.06,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className={`inline-block ${
+                    w === "modern" || w === "city." ? "text-accent" : ""
+                  }`}
+                >
+                  {w}
+                </motion.span>
+              </span>
             ))}
           </h1>
 
@@ -169,13 +170,13 @@ export function Hero() {
             <div className="absolute top-5 left-5 flex items-center gap-2 px-2.5 py-1.5 rounded-md glass border border-border-subtle">
               <span className="size-1.5 rounded-full bg-accent animate-pulse" />
               <span className="font-mono text-[10px] tracking-[0.16em] uppercase">
-                Live · {issueCount !== null ? `${issueCount} Incidents` : "Connecting…"}
+                Live · {typeof issueCount === "number" ? `${issueCount} Incidents` : "Connecting…"}
               </span>
             </div>
             <div className="absolute bottom-5 right-5 grid grid-cols-3 gap-px bg-border-subtle border border-border-subtle rounded-md overflow-hidden text-[10px] font-mono">
               {[
-                ["Incidents", issueCount !== null ? issueCount.toLocaleString() : "…"],
-                ["Clusters", clusterCount !== null ? clusterCount.toString() : "…"],
+                ["Incidents", typeof issueCount === "number" ? issueCount.toLocaleString() : "…"],
+                ["Clusters", typeof clusterCount === "number" ? clusterCount.toString() : "…"],
                 ["Uptime", "99.99%"],
               ].map(([k, v]) => (
                 <div key={k} className="bg-paper px-3 py-2">

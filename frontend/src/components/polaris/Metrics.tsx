@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { API_URL } from "@/lib/api";
+import { API_URL, safeFetchArray } from "@/lib/api";
 
 function Counter({ to, decimals = 0, suffix = "" }: { to: number; decimals?: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -37,8 +37,8 @@ export function Metrics() {
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API_URL}/issues`).then((r) => r.json()).catch(() => []),
-      fetch(`${API_URL}/clusters`).then((r) => r.json()).catch(() => []),
+      safeFetchArray(`${API_URL}/issues`),
+      safeFetchArray(`${API_URL}/clusters`),
     ]).then(([iss, cls]) => {
       setIssues(iss);
       setClusters(cls);

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/polaris/Nav";
 import { PageTransition } from "@/components/polaris/PageTransition";
-import { API_URL, WS_URL } from "@/lib/api";
+import { API_URL, WS_URL, safeFetchArray } from "@/lib/api";
 
 export const Route = createFileRoute("/command")({
   head: () => ({
@@ -145,17 +145,33 @@ function CommandShell() {
   const [issues, setIssues] = useState<any[]>([]);
   const [briefs, setBriefs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dispatchTimes, setDispatchTimes] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem("polaris_crew_dispatch_times");
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSeconds(s => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function fetchAllData() {
     try {
-      const [clustersRes, issuesRes, briefsRes] = await Promise.all([
-        fetch(`${API_URL}/clusters`),
-        fetch(`${API_URL}/issues`),
-        fetch(`${API_URL}/briefs`)
+      const [cls, iss, br] = await Promise.all([
+        safeFetchArray(`${API_URL}/clusters`),
+        safeFetchArray(`${API_URL}/issues`),
+        safeFetchArray(`${API_URL}/briefs`)
       ]);
-      if (clustersRes.ok) setClusters(await clustersRes.json());
-      if (issuesRes.ok) setIssues(await issuesRes.json());
-      if (briefsRes.ok) setBriefs(await briefsRes.json());
+      setClusters(cls);
+      setIssues(iss);
+      setBriefs(br);
     } catch (err) {
       console.error("Failed to fetch command center data:", err);
     } finally {
@@ -166,14 +182,41 @@ function CommandShell() {
   useEffect(() => {
     fetchAllData();
 
-    // WebSocket Auto-Refresh Sync
-    const ws = new WebSocket(`${WS_URL}/ws/logs`);
-    ws.onmessage = () => {
-      fetchAllData();
-    };
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    function connect() {
+      console.log("Connecting to Command Center sync WebSocket...");
+      ws = new WebSocket(`${WS_URL}/ws/logs`);
+
+      ws.onmessage = () => {
+        console.log("WebSocket update broadcast received. Refreshing dashboard data.");
+        fetchAllData();
+      };
+
+      ws.onclose = (e) => {
+        console.warn("WebSocket closed. Reconnecting in 2s...", e.reason);
+        reconnectTimeout = setTimeout(() => {
+          connect();
+        }, 2000);
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        ws?.close();
+      };
+    }
+
+    connect();
 
     return () => {
-      ws.close();
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
     };
   }, []);
 
@@ -183,6 +226,14 @@ function CommandShell() {
         method: "POST"
       });
       if (res.ok) {
+        const matchingBrief = briefs.find(b => b.id === briefId);
+        if (matchingBrief) {
+          const idx = briefs.indexOf(matchingBrief);
+          const crewName = crewsList[idx % crewsList.length];
+          const newTimes = { ...dispatchTimes, [crewName]: Date.now() };
+          setDispatchTimes(newTimes);
+          localStorage.setItem("polaris_crew_dispatch_times", JSON.stringify(newTimes));
+        }
         fetchAllData();
       }
     } catch (err) {
@@ -192,6 +243,38 @@ function CommandShell() {
 
   const activeCount = issues.filter(i => i.status !== "RESOLVED").length;
   const pendingBriefs = briefs.filter(b => b.status === "PENDING_REVIEW" || b.status === "SENT");
+
+  const crewsList = ["Crew 04", "Crew 07", "Crew 12", "Crew 19"];
+  const dynamicCrewStatuses: Record<string, string> = {
+    "Crew 04": "standby",
+    "Crew 07": "standby",
+    "Crew 12": "standby",
+    "Crew 19": "standby",
+  };
+
+  briefs.forEach((b, idx) => {
+    const crewName = crewsList[idx % crewsList.length];
+    if (b.status === "APPROVED") {
+      const dispatchTime = dispatchTimes[crewName];
+      if (dispatchTime) {
+        const elapsed = Math.floor((Date.now() - dispatchTime) / 1000);
+        const remaining = 45 - elapsed;
+        if (remaining > 0) {
+          dynamicCrewStatuses[crewName] = `active · resolving in ${remaining}s`;
+        } else {
+          dynamicCrewStatuses[crewName] = "standby";
+        }
+      } else {
+        // Fallback for historical approvals not initiated in current browser storage session
+        dynamicCrewStatuses[crewName] = "standby";
+      }
+    }
+  });
+
+  if (dynamicCrewStatuses["Crew 04"] === "standby") dynamicCrewStatuses["Crew 04"] = "standby";
+  if (dynamicCrewStatuses["Crew 07"] === "standby") dynamicCrewStatuses["Crew 07"] = "on-site · 22 min";
+  if (dynamicCrewStatuses["Crew 12"] === "standby") dynamicCrewStatuses["Crew 12"] = "standby";
+  if (dynamicCrewStatuses["Crew 19"] === "standby") dynamicCrewStatuses["Crew 19"] = "returning";
 
   return (
     <div className="px-4 md:px-6 pb-10">
@@ -321,39 +404,56 @@ function CommandShell() {
           <Panel title="Work Order Queue" eyebrow="awaiting approval">
             <ul className="space-y-3">
               {briefs.length > 0 ? (
-                briefs.map((b) => (
-                  <li key={b.id} className="p-3 rounded-lg border border-white/[0.08] bg-white/[0.02]">
-                    <div className="flex justify-between items-baseline">
-                      <span className="font-mono text-[10px] text-white/40">WO-{b.id.slice(0, 4).toUpperCase()}</span>
-                      <span className={`font-mono text-[10px] uppercase ${b.status === "APPROVED" ? "text-emerald-400" : "text-accent"}`}>
-                        {b.status}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[13px] font-medium">
-                      {b.clusters?.causal_hypothesis ? b.clusters.causal_hypothesis.replace("[Local Rule Engine] Causal failure path: ", "") : `${b.zone_id} Dispatch Brief`}
-                    </div>
-                    <div className="mt-1 font-mono text-[10px] text-white/40">Field Crew 04</div>
-                    <div className="mt-3 flex gap-2">
-                      {b.status !== "APPROVED" ? (
-                        <>
-                          <button
-                            onClick={() => handleApprove(b.id)}
-                            className="flex-1 px-2.5 py-1.5 rounded bg-accent text-canvas text-[11px] font-medium hover:opacity-90 transition"
-                          >
-                            Approve
-                          </button>
-                          <button className="px-2.5 py-1.5 rounded border border-white/10 text-[11px] text-white/70 hover:bg-white/[0.04] transition">
-                            Defer
-                          </button>
-                        </>
-                      ) : (
-                        <div className="text-[11px] text-emerald-400/80 font-semibold py-1">
-                          ✓ Work Order Approved & Dispatched
+                briefs.map((b, idx) => {
+                  const assignedCrew = crewsList[idx % crewsList.length];
+                  return (
+                    <li key={b.id} className="p-3 rounded-lg border border-white/[0.08] bg-white/[0.02]">
+                      <div className="flex justify-between items-baseline">
+                        <span className="font-mono text-[10px] text-white/40">WO-{b.id.slice(0, 4).toUpperCase()}</span>
+                        <span className={`font-mono text-[10px] uppercase ${b.status === "APPROVED" ? "text-emerald-400" : "text-accent"}`}>
+                          {b.status}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[13px] font-medium">
+                        {b.clusters?.causal_hypothesis ? b.clusters.causal_hypothesis.replace("[Local Rule Engine] Causal failure path: ", "") : `${b.zone_id} Dispatch Brief`}
+                      </div>
+                      <div className="mt-1 font-mono text-[10px] text-white/40">Field {assignedCrew}</div>
+                      <div className="mt-2.5 grid grid-cols-3 gap-1 border-t border-white/[0.04] pt-2 text-[10px] font-mono text-white/50">
+                        <div>
+                          <span className="block text-[8px] uppercase text-white/30">Preventive</span>
+                          <span className="text-white/80">₹{b.clusters?.preventive_cost_estimate_rupees?.toLocaleString() || "—"}</span>
                         </div>
-                      )}
-                    </div>
-                  </li>
-                ))
+                        <div>
+                          <span className="block text-[8px] uppercase text-white/30">Reactive</span>
+                          <span className="text-rose-400">₹{b.clusters?.reactive_cost_estimate_rupees?.toLocaleString() || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[8px] uppercase text-white/30">Avoided</span>
+                          <span className="text-emerald-400">₹{b.clusters?.cost_avoidance_estimate_rupees?.toLocaleString() || "—"}</span>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        {b.status !== "APPROVED" ? (
+                          <>
+                            <button
+                              onClick={() => handleApprove(b.id)}
+                              className="flex-1 px-2.5 py-1.5 rounded bg-accent text-canvas text-[11px] font-medium hover:opacity-90 transition"
+                            >
+                              Approve
+                            </button>
+                            <button className="px-2.5 py-1.5 rounded border border-white/10 text-[11px] text-white/70 hover:bg-white/[0.04] transition">
+                              Defer
+                            </button>
+                          </>
+                        ) : (
+                          <div className="text-[11px] text-emerald-400/80 font-semibold py-1">
+                            ✓ Work Order Approved & Dispatched
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })
               ) : (
                 <div className="py-6 text-center text-white/30 font-mono text-[11px]">
                   [ No pending work orders ]
@@ -364,17 +464,17 @@ function CommandShell() {
 
           <Panel title="Crew Telemetry" eyebrow="live">
             <ul className="space-y-2.5 text-[12px]">
-              {[
-                ["Crew 04", "en route · 6 min"],
-                ["Crew 07", "on-site · 22 min"],
-                ["Crew 12", "standby"],
-                ["Crew 19", "returning"],
-              ].map(([c, s]) => (
-                <li key={c} className="flex justify-between">
-                  <span>{c}</span>
-                  <span className="font-mono text-[11px] text-white/50">{s}</span>
-                </li>
-              ))}
+              {Object.entries(dynamicCrewStatuses).map(([c, s]) => {
+                const isActive = s.includes("dispatched");
+                return (
+                  <li key={c} className="flex justify-between items-center">
+                    <span>{c}</span>
+                    <span className={`font-mono text-[11px] ${isActive ? "text-emerald-400 font-bold" : "text-white/50"}`}>
+                      {s}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </Panel>
         </section>

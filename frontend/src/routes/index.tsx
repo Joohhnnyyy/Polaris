@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Nav } from "@/components/polaris/Nav";
 import { Hero } from "@/components/polaris/Hero";
 import { Process } from "@/components/polaris/Process";
-import { AgentArchitecture } from "@/components/polaris/AgentArchitecture";
 import { AgentLog } from "@/components/polaris/AgentLog";
 import { Metrics } from "@/components/polaris/Metrics";
 import { OfficerCommand } from "@/components/polaris/OfficerCommand";
@@ -39,7 +38,6 @@ function Index() {
       <main>
         <Hero />
         <Process />
-        <AgentArchitecture />
         <AgentLog />
         <OfficerCommand />
         <Metrics />

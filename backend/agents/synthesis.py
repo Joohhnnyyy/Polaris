@@ -276,8 +276,13 @@ class SynthesisAgent:
             cluster_res = supabase_client.table("clusters").insert(cluster_data).execute()
             if cluster_res.data:
                 cluster_id = cluster_res.data[0]["id"]
+                import uuid
                 for issue_id_val in result["evidence_chain_issue_ids"]:
-                    supabase_client.table("issues").update({"cluster_id": cluster_id}).eq("id", issue_id_val).execute()
+                    try:
+                        uuid.UUID(str(issue_id_val))
+                        supabase_client.table("issues").update({"cluster_id": cluster_id}).eq("id", issue_id_val).execute()
+                    except ValueError:
+                        pass
                 result["cluster_id"] = cluster_id
         except Exception as db_err:
             print(f"Failed to save cluster in DB: {db_err}")

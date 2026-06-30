@@ -120,62 +120,43 @@ async def process_async_synthesis(inserted_issue: dict):
         synthesis_result = await synthesis_agent.run_synthesis(inserted_issue, on_step_callback=timeline_log)
         await timeline_log("Synthesis", f"Completed. Risk level: {synthesis_result.get('risk_level')}. Hypothesis: {synthesis_result.get('causal_hypothesis')}.")
         
-        # Dispatch brief if risk is high/critical
-        if synthesis_result.get("risk_level") in ["HIGH", "CRITICAL"]:
-            cluster_id = synthesis_result.get("cluster_id")
-            if cluster_id:
-                await timeline_log("Briefing", f"Generating communication brief and auto-dispatching work order.")
-                # We can trigger the email brief automatically
-                # Query cluster info first
-                try:
-                    cluster_res = supabase_client.table("clusters").select("*").eq("id", cluster_id).execute()
-                    if cluster_res.data:
-                        cluster_data = cluster_res.data[0]
-                        # Fetch officer details
-                        officer_email = "anshuman.ash@outlook.com"
-                        officer_name = "Officer Johnson"
-                        if cluster_data.get("assigned_officer_id"):
-                            off_res = supabase_client.table("officers").select("*").eq("id", cluster_data.get("assigned_officer_id")).execute()
-                            if off_res.data:
-                                officer_email = off_res.data[0].get("email", officer_email)
-                                officer_name = off_res.data[0].get("name", officer_name)
-                        
-                        generated_brief = await brief_agent.generate_brief(
-                            zone_id=cluster_data.get("zone_id", "Sector 7B"),
-                            risk_level=cluster_data.get("risk_level", "HIGH"),
-                            causal_hypothesis=cluster_data.get("causal_hypothesis", ""),
-                            affected_residents=cluster_data.get("affected_residents", 2400)
-                        )
-                        
-                        custom_subject = generated_brief.get("subject")
-                        custom_body = generated_brief.get("email_body")
-                        
-                        brief_details = {
-                            "zone_id": cluster_data.get("zone_id", "Sector 7B"),
-                            "risk_level": cluster_data.get("risk_level", "HIGH"),
-                            "confidence": cluster_data.get("confidence", 0.8),
-                            "affected_residents": cluster_data.get("affected_residents", 2400),
-                            "causal_hypothesis": cluster_data.get("causal_hypothesis", "")
-                        }
-                        
-                        success = sendgrid_client.send_officer_email(
-                            to_email=officer_email,
-                            officer_name=officer_name,
-                            brief_details=brief_details,
-                            custom_subject=custom_subject,
-                            custom_body=custom_body
-                        )
-                        
-                        # Save brief to DB
-                        supabase_client.table("briefs").insert({
-                            "cluster_id": cluster_id,
-                            "officer_id": cluster_data.get("assigned_officer_id"),
-                            "draft_email": f"To: {officer_email}\nSubject: {custom_subject}\n\n{custom_body}",
-                            "status": "SENT" if success else "FAILED"
-                        }).execute()
-                        await timeline_log("Briefing", f"Brief dispatched successfully to {officer_name} ({officer_email}).")
-                except Exception as brief_err:
-                    print(f"Background brief failed: {brief_err}")
+        # Dispatch brief if risk/cluster is generated
+        cluster_id = synthesis_result.get("cluster_id")
+        if cluster_id:
+            await timeline_log("Briefing", f"Generating communication brief and queueing work order.")
+            try:
+                cluster_res = supabase_client.table("clusters").select("*").eq("id", cluster_id).execute()
+                if cluster_res.data:
+                    cluster_data = cluster_res.data[0]
+                    # Fetch officer details
+                    officer_email = "anshuman.ash@outlook.com"
+                    officer_name = "Officer Johnson"
+                    if cluster_data.get("assigned_officer_id"):
+                        off_res = supabase_client.table("officers").select("*").eq("id", cluster_data.get("assigned_officer_id")).execute()
+                        if off_res.data:
+                            officer_email = off_res.data[0].get("email", officer_email)
+                            officer_name = off_res.data[0].get("name", officer_name)
+                    
+                    generated_brief = await brief_agent.generate_brief(
+                        zone_id=cluster_data.get("zone_id", "Sector 7B"),
+                        risk_level=cluster_data.get("risk_level", "HIGH"),
+                        causal_hypothesis=cluster_data.get("causal_hypothesis", ""),
+                        affected_residents=cluster_data.get("affected_residents", 2400)
+                    )
+                    
+                    custom_subject = generated_brief.get("subject")
+                    custom_body = generated_brief.get("email_body")
+                    
+                    # Save brief to DB with PENDING_REVIEW status
+                    supabase_client.table("briefs").insert({
+                        "cluster_id": cluster_id,
+                        "officer_id": cluster_data.get("assigned_officer_id"),
+                        "draft_email": f"To: {officer_email}\nSubject: {custom_subject}\n\n{custom_body}",
+                        "status": "PENDING_REVIEW"
+                    }).execute()
+                    await timeline_log("Briefing", f"Work order queued for review in Command Center.")
+            except Exception as brief_err:
+                print(f"Background brief queue failed: {brief_err}")
     except Exception as e:
         import traceback
         print(f"Async synthesis background process failed: {e}")
@@ -385,11 +366,68 @@ async def create_report(
 from backend.notifications.sendgrid_client import SendGridClient
 sendgrid_client = SendGridClient()
 
+def calculate_cluster_costs(causal_hypothesis: str, risk_level: str, affected_residents: int) -> dict:
+    # Infer category from causal hypothesis text
+    category = "Other"
+    hypothesis = (causal_hypothesis or "").lower()
+    if "water" in hypothesis or "pipe" in hypothesis or "leak" in hypothesis or "rupture" in hypothesis:
+        category = "Water Leak"
+    elif "subsidence" in hypothesis or "subgrade" in hypothesis or "wash-out" in hypothesis:
+        category = "Pavement Subsidence"
+    elif "pothole" in hypothesis or "asphalt" in hypothesis or "road" in hypothesis or "compaction" in hypothesis:
+        category = "Pothole"
+    elif "streetlight" in hypothesis or "lamp" in hypothesis or "electrical" in hypothesis or "circuit" in hypothesis:
+        category = "Broken Streetlight"
+    elif "garbage" in hypothesis or "waste" in hypothesis or "pile" in hypothesis:
+        category = "Garbage Pile"
+
+    # Base costs in Rupees (Preventive, Reactive)
+    category_costs = {
+        "Water Leak": (50000.0, 300000.0),
+        "Pavement Subsidence": (75000.0, 450000.0),
+        "Pothole": (15000.0, 80000.0),
+        "Broken Streetlight": (5000.0, 20000.0),
+        "Garbage Pile": (2000.0, 10000.0),
+        "Other": (10000.0, 50000.0)
+    }
+
+    prev_base, react_base = category_costs.get(category, category_costs["Other"])
+
+    # Scale based on risk level multiplier
+    risk_multipliers = {
+        "LOW": 0.8,
+        "MEDIUM": 1.0,
+        "HIGH": 1.5,
+        "CRITICAL": 2.5
+    }
+    multiplier = risk_multipliers.get(risk_level or "LOW", 1.0)
+
+    # Scale based on affected residents
+    resident_factor = 1.0 + (max(0, affected_residents or 0) / 1000.0)
+
+    preventive_cost = prev_base * multiplier * resident_factor
+    reactive_cost = react_base * multiplier * resident_factor
+    cost_avoided = reactive_cost - preventive_cost
+
+    return {
+        "preventive_cost_estimate_rupees": round(preventive_cost, 2),
+        "reactive_cost_estimate_rupees": round(reactive_cost, 2),
+        "cost_avoidance_estimate_rupees": round(cost_avoided, 2)
+    }
+
 @app.get("/clusters")
 def get_clusters():
     try:
         res = supabase_client.table("clusters").select("*").order("created_at", desc=True).execute()
-        return res.data if res.data else []
+        clusters_data = res.data if res.data else []
+        for cluster in clusters_data:
+            costs = calculate_cluster_costs(
+                causal_hypothesis=cluster.get("causal_hypothesis", ""),
+                risk_level=cluster.get("risk_level", "LOW"),
+                affected_residents=cluster.get("affected_residents", 0)
+            )
+            cluster.update(costs)
+        return clusters_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch clusters: {str(e)}")
 
@@ -416,14 +454,74 @@ def get_decision_audit(issue_id: str):
 def get_briefs():
     try:
         res = supabase_client.table("briefs").select("*, clusters(*)").order("created_at", desc=True).execute()
-        return res.data if res.data else []
+        briefs_data = res.data if res.data else []
+        for brief in briefs_data:
+            cluster = brief.get("clusters")
+            if cluster:
+                costs = calculate_cluster_costs(
+                    causal_hypothesis=cluster.get("causal_hypothesis", ""),
+                    risk_level=cluster.get("risk_level", "LOW"),
+                    affected_residents=cluster.get("affected_residents", 0)
+                )
+                cluster.update(costs)
+        return briefs_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch briefs: {str(e)}")
 
 @app.post("/briefs/{brief_id}/approve")
 def approve_brief(brief_id: str):
     try:
+        # Fetch brief and cluster details
+        brief_res = supabase_client.table("briefs").select("*, clusters(*)").eq("id", brief_id).execute()
+        if not brief_res.data:
+            raise HTTPException(status_code=404, detail="Brief not found")
+        
+        brief_data = brief_res.data[0]
+        cluster_data = brief_data.get("clusters")
+        
+        # Update status to APPROVED
         res = supabase_client.table("briefs").update({"status": "APPROVED"}).eq("id", brief_id).execute()
+        
+        # Best-effort SendGrid email delivery
+        try:
+            if cluster_data:
+                officer_email = "anshuman.ash@outlook.com"
+                officer_name = "Officer Johnson"
+                if cluster_data.get("assigned_officer_id"):
+                    off_res = supabase_client.table("officers").select("*").eq("id", cluster_data.get("assigned_officer_id")).execute()
+                    if off_res.data:
+                        officer_email = off_res.data[0].get("email", officer_email)
+                        officer_name = off_res.data[0].get("name", officer_name)
+                
+                # Parse subject and body from draft_email
+                subject = "Polaris Work Order Approval Notice"
+                body = brief_data.get("draft_email", "")
+                if "Subject: " in body:
+                    parts = body.split("Subject: ")
+                    if len(parts) > 1:
+                        sub_parts = parts[1].split("\n", 1)
+                        subject = sub_parts[0]
+                        if len(sub_parts) > 1:
+                            body = sub_parts[1].strip()
+                
+                brief_details = {
+                    "zone_id": cluster_data.get("zone_id", "Sector 7B"),
+                    "risk_level": cluster_data.get("risk_level", "HIGH"),
+                    "confidence": cluster_data.get("confidence", 0.8),
+                    "affected_residents": cluster_data.get("affected_residents", 2400),
+                    "causal_hypothesis": cluster_data.get("causal_hypothesis", "")
+                }
+                
+                sendgrid_client.send_officer_email(
+                    to_email=officer_email,
+                    officer_name=officer_name,
+                    brief_details=brief_details,
+                    custom_subject=subject,
+                    custom_body=body
+                )
+        except Exception as email_err:
+            print(f"Failed to dispatch email upon approval: {email_err}")
+            
         return {"success": True, "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to approve brief: {str(e)}")
