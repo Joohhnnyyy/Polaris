@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
 from backend.db.supabase_client import supabase_client
@@ -179,6 +179,7 @@ async def process_async_synthesis(inserted_issue: dict):
 
 @app.post("/reports")
 async def create_report(
+    request: Request,
     background_tasks: BackgroundTasks,
     lat: float = Form(...),
     lng: float = Form(...),
@@ -248,7 +249,8 @@ async def create_report(
         with open(local_path, "wb") as local_f:
             local_f.write(image_bytes)
         
-        image_url = f"http://localhost:8000/static/{filename}"
+        base_url = str(request.base_url)
+        image_url = f"{base_url.rstrip('/')}/static/{filename}"
         
         # Also try uploading to Supabase Storage in the background (best-effort)
         try:
