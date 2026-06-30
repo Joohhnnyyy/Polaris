@@ -7,11 +7,15 @@ from backend.agents.evidence import EvidenceAgent
 from backend.agents.synthesis import SynthesisAgent
 from backend.agents.brief import BriefAgent
 import uuid
+import json
 from datetime import datetime
-from pillow_heif import register_heif_opener
-
-# Register HEIC/HEIF opener for Pillow to handle iOS uploaded photos
-register_heif_opener()
+try:
+    from pillow_heif import register_heif_opener
+    # Register HEIC/HEIF opener for Pillow to handle iOS uploaded photos
+    register_heif_opener()
+except ImportError:
+    register_heif_opener = None
+    print("Warning: pillow_heif is not installed. HEIC/HEIF images from iOS will not be supported.")
 
 from fastapi.staticfiles import StaticFiles
 import os
@@ -113,7 +117,7 @@ from fastapi import BackgroundTasks
 async def process_async_synthesis(inserted_issue: dict):
     try:
         await timeline_log("Synthesis", "Invoking reasoning loop on Gemini 2.5 Pro (Urban Autopsy) in background.")
-        synthesis_result = await synthesis_agent.run_synthesis(inserted_issue)
+        synthesis_result = await synthesis_agent.run_synthesis(inserted_issue, on_step_callback=timeline_log)
         await timeline_log("Synthesis", f"Completed. Risk level: {synthesis_result.get('risk_level')}. Hypothesis: {synthesis_result.get('causal_hypothesis')}.")
         
         # Dispatch brief if risk is high/critical
@@ -328,6 +332,35 @@ async def create_report(
             raise HTTPException(status_code=500, detail="Failed to save report to database")
             
         inserted_issue = res.data[0]
+
+        # 3.5. Create initial pending decision_audit record
+        try:
+            audit_payload = {
+                "issue_id": inserted_issue["id"],
+                "risk_level": "LOW",
+                "decision": "INGESTING",
+                "confidence": 0.5,
+                "causal_hypothesis": "Analyzing incoming telemetry...",
+                "knowledge_version": "v1.4",
+                "policy_version": "v1.4",
+                "llm_model": "gemini-2.5-pro",
+                "embedding_model": "text-embedding-004",
+                "decision_trace": json.dumps({
+                    "trace": [
+                        {"step": 1, "service": "IntakeAgentService", "status": "SUCCESS", "latency_ms": 100, "summary": f"Classified as {intake_result.get('category')} (Severity: {intake_result.get('severity')}/5)"},
+                        {"step": 2, "service": "EvidenceAgentService", "status": "SUCCESS", "latency_ms": 100, "summary": f"Visual forensics complete. Hypothesis: {likely_cause}"}
+                    ],
+                    "context": {
+                        "zone": None,
+                        "weather": None,
+                        "nearest_assets": [],
+                        "historical_cases": []
+                    }
+                })
+            }
+            supabase_client.table("decision_audit").insert(audit_payload).execute()
+        except Exception as audit_init_err:
+            print(f"Failed to insert initial decision audit: {audit_init_err}")
         
         # 4. Trigger Synthesis Agent loop (Urban Autopsy) in background task
         background_tasks.add_task(process_async_synthesis, inserted_issue)

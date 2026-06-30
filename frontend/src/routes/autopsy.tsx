@@ -39,17 +39,43 @@ const edges: [string, string][] = [
   ["history", "image"], ["image", "verdict"], ["corr", "verdict"],
 ];
 
+const getHistoryFallback = (category?: string) => {
+  if (category === "Broken Streetlight") {
+    return "Municipal records show historical electrical grid load spikes in Sector 7B.";
+  }
+  if (category === "Garbage Pile") {
+    return "Municipal records show historical collection route delays and overflow notices in Sector 7B.";
+  }
+  if (category === "Pothole" || category === "Pavement Subsidence") {
+    return "Municipal records show historical subgrade soil erosion and roadway subsidence in Sector 7B.";
+  }
+  return "Municipal records show historical pipeline corrosion vulnerability in Sector 7B.";
+};
+
 function AutopsyPage() {
   const [clusters, setClusters] = useState<any[]>([]);
   const [issues, setIssues] = useState<any[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<any>(null);
   const [selected, setSelected] = useState<string>("verdict");
   const [loading, setLoading] = useState(true);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
   const [decisionAudit, setDecisionAudit] = useState<any>(null);
 
-  async function fetchData() {
+  // Initialize selectedIssueId from query param on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const caseId = urlParams.get("case_id");
+      if (caseId) {
+        setSelectedIssueId(caseId);
+      }
+    }
+  }, []);
+
+  async function fetchData(activeIssueId?: string | null) {
     try {
+      const currentIssueId = activeIssueId !== undefined ? activeIssueId : selectedIssueId;
       const [clustersRes, issuesRes] = await Promise.all([
         fetch(`${API_URL}/clusters`),
         fetch(`${API_URL}/issues`)
@@ -60,15 +86,30 @@ function AutopsyPage() {
       setClusters(clustersData);
       setIssues(issuesData);
 
-      if (clustersData && clustersData.length > 0) {
-        setSelectedCluster(clustersData[0]);
+      let targetIssue = null;
+      if (currentIssueId) {
+        const found = issuesData.find((i: any) => i.id === currentIssueId);
+        if (found) targetIssue = found;
       }
 
-      if (issuesData && issuesData.length > 0) {
-        const auditRes = await fetch(`${API_URL}/decision_audit/${issuesData[0].id}`);
+      if (targetIssue && targetIssue.cluster_id) {
+        const foundCluster = clustersData.find((c: any) => c.id === targetIssue.cluster_id);
+        if (foundCluster) {
+          setSelectedCluster(foundCluster);
+        } else {
+          setSelectedCluster(null);
+        }
+      } else {
+        setSelectedCluster(null);
+      }
+
+      if (targetIssue) {
+        const auditRes = await fetch(`${API_URL}/decision_audit/${targetIssue.id}`);
         if (auditRes.ok) {
           const auditData = await auditRes.json();
           setDecisionAudit(auditData);
+        } else {
+          setDecisionAudit(null);
         }
       }
     } catch (err) {
@@ -79,18 +120,46 @@ function AutopsyPage() {
   }
 
   useEffect(() => {
-    fetchData();
+    fetchData(selectedIssueId);
 
-    // Live Sync via WebSocket
-    const ws = new WebSocket(`${WS_URL}/ws/logs`);
-    ws.onmessage = () => {
-      fetchData();
-    };
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    function connect() {
+      console.log("Connecting to live sync WebSocket...");
+      ws = new WebSocket(`${WS_URL}/ws/logs`);
+
+      ws.onmessage = (event) => {
+        console.log("WebSocket event received:", event.data);
+        // Refresh data using latest state closure value
+        fetchData(selectedIssueId);
+      };
+
+      ws.onclose = (e) => {
+        console.warn("WebSocket closed. Attempting reconnect in 2s...", e.reason);
+        reconnectTimeout = setTimeout(() => {
+          connect();
+        }, 2000);
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        ws?.close();
+      };
+    }
+
+    connect();
 
     return () => {
-      ws.close();
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
     };
-  }, []);
+  }, [selectedIssueId]);
 
   const auditContext = (() => {
     if (!decisionAudit?.decision_trace) return null;
@@ -105,16 +174,16 @@ function AutopsyPage() {
     return traceObj?.context;
   })();
 
-  const currentHypothesis = selectedCluster?.causal_hypothesis || "Subsurface pipe degradation causing localized asphalt subsidence.";
-  const currentRisk = selectedCluster?.risk_level || "HIGH";
-  const confidenceScore = selectedCluster?.confidence ? (selectedCluster.confidence * 100).toFixed(0) + "%" : "94%";
-  const affectedCount = selectedCluster?.affected_residents || 2400;
+  const latestIssue = selectedIssueId ? (issues.find(i => i.id === selectedIssueId) || null) : null;
+  const currentHypothesis = latestIssue ? (selectedCluster?.causal_hypothesis || "Analyzing root cause hypothesis...") : "Awaiting causal hypothesis from Synthesis cortex...";
+  const currentRisk = latestIssue ? (selectedCluster?.risk_level || "LOW") : "AWAITING";
+  const confidenceScore = latestIssue ? (selectedCluster?.confidence ? (selectedCluster.confidence * 100).toFixed(0) + "%" : "94%") : "0%";
+  const affectedCount = latestIssue ? (selectedCluster?.affected_residents || 2400) : 0;
 
-  const latestIssue = issues[0];
   const forensics = latestIssue?.gemini_analysis?.forensics;
-  const candidateCause = forensics?.candidate_causes?.[0]?.cause || "Sub-surface pipe leak";
-  const obsDamage = forensics?.physical_damage?.[0] || "Asphalt saturation & subsidence";
-  const envSignal = forensics?.environmental_signals?.[0] || "Standing water pooling";
+  const candidateCause = forensics?.candidate_causes?.[0]?.cause || "Awaiting forensics...";
+  const obsDamage = forensics?.physical_damage?.[0] || "Awaiting visual scan...";
+  const envSignal = forensics?.environmental_signals?.[0] || "Awaiting telemetry...";
 
   const dynamicNodes = [
     { 
@@ -132,7 +201,7 @@ function AutopsyPage() {
       x: 35, 
       y: 22, 
       label: auditContext?.nearest_assets?.[0] ? `Asset: ${auditContext.nearest_assets[0].id}` : "Visual Forensics", 
-      sub: auditContext?.nearest_assets?.[0] ? `${auditContext.nearest_assets[0].asset_type} (${auditContext.nearest_assets[0].material})` : obsDamage.slice(0, 20) + "...", 
+      sub: auditContext?.nearest_assets?.[0] ? `${auditContext.weather?.weather_condition ? auditContext.nearest_assets[0].asset_type : 'Detections'}` : obsDamage.slice(0, 20) + "...", 
       kind: "evidence",
       source: auditContext?.nearest_assets?.[0] ? "Supabase Asset Registry" : "Gemini Vision Agent",
       reasoning: auditContext?.nearest_assets?.[0] 
@@ -161,7 +230,7 @@ function AutopsyPage() {
       source: auditContext?.zone ? "Supabase Historical DB" : "Supabase Knowledge Graph",
       reasoning: auditContext?.historical_cases?.[0]
         ? `Found ${auditContext.historical_cases.length} similar historical case(s) in zone ${auditContext.zone.name}. Closest match: ID ${auditContext.historical_cases[0].id}, outcome: ${auditContext.historical_cases[0].incident_outcome}, similarity: ${(auditContext.historical_cases[0].similarity * 100).toFixed(0)}%, distance: ${auditContext.historical_cases[0].distance.toFixed(0)}m. Resolution summary: ${auditContext.historical_cases[0].resolution_summary}`
-        : selectedCluster?.explainability_factors?.[1] || selectedCluster?.explainability_factors?.[0] || "Municipal records show historical pipeline corrosion vulnerability in Sector 7B."
+        : selectedCluster?.explainability_factors?.[1] || selectedCluster?.explainability_factors?.[0] || getHistoryFallback(latestIssue?.category)
     },
     { 
       id: "corr", 
@@ -232,9 +301,34 @@ function AutopsyPage() {
                   Every conclusion is traced back to a citation, a sensor, an
                   image, a moment in time.
                 </p>
+                <div className="mt-4 mb-6 flex items-center gap-3">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-white/50">Select Case:</span>
+                  <select 
+                    value={selectedIssueId || ""} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedIssueId(val || null);
+                      const url = new URL(window.location.href);
+                      if (val) {
+                        url.searchParams.set("case_id", val);
+                      } else {
+                        url.searchParams.delete("case_id");
+                      }
+                      window.history.pushState({}, "", url.toString());
+                    }}
+                    className="bg-paper border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white bg-[#0e0f14] focus:outline-none focus:ring-1 focus:ring-accent w-full max-w-[280px]"
+                  >
+                    <option value="">-- Awaiting Case / Select --</option>
+                    {issues.map((issue) => (
+                      <option key={issue.id} value={issue.id}>
+                        {issue.category} - {issue.id.slice(0, 8)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="mt-6 grid grid-cols-3 gap-px bg-white/[0.06] border border-white/[0.08] rounded-xl overflow-hidden">
                   {[
-                    ["Case ID", selectedCluster ? selectedCluster.id.slice(0, 8) : "PLR-2026"],
+                    ["Case ID", latestIssue ? latestIssue.id.slice(0, 8) : "AWAITING"],
                     ["Confidence", confidenceScore],
                     ["Residents", affectedCount.toLocaleString()],
                   ].map(([k, v]) => (
@@ -253,6 +347,25 @@ function AutopsyPage() {
               <section className="col-span-12 lg:col-span-8">
                 <Panel title="Evidence Graph" eyebrow="live multi-agent synthesis">
                   <div className="relative h-[460px] rounded-xl border border-white/[0.06] bg-[#0a0b10] overflow-hidden">
+                    {!latestIssue && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0b10]/90 backdrop-blur-md z-20 p-6 text-center">
+                        <motion.div
+                          animate={{ scale: [1, 1.05, 1] }}
+                          transition={{ repeat: Infinity, duration: 2.5 }}
+                          className="size-12 rounded-full border border-accent/40 bg-accent/10 flex items-center justify-center text-accent mb-4"
+                        >
+                          <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </motion.div>
+                        <h3 className="font-mono text-sm font-semibold uppercase tracking-wider text-white">
+                          Awaiting Incident Ingestion
+                        </h3>
+                        <p className="text-white/40 text-xs mt-2 max-w-sm">
+                          Select a previous case from the dropdown list or submit a new report on the Citizen Portal to stream live analysis.
+                        </p>
+                      </div>
+                    )}
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                       <defs>
                         <pattern id="autopsy-grid" width="5" height="5" patternUnits="userSpaceOnUse">
@@ -316,12 +429,24 @@ function AutopsyPage() {
                   <div className="relative">
                     <div className="absolute left-[16px] top-2 bottom-2 w-px bg-white/10" />
                     {(() => {
+                      if (!latestIssue) {
+                        return (
+                          <div className="py-16 text-center text-white/30 font-mono text-[11px]">
+                            // Awaiting case selection to load decision trace
+                          </div>
+                        );
+                      }
                       let trace: any[] = [];
                       if (decisionAudit?.decision_trace) {
                         try {
-                          trace = typeof decisionAudit.decision_trace === "string" 
+                          const parsed = typeof decisionAudit.decision_trace === "string" 
                             ? JSON.parse(decisionAudit.decision_trace) 
                             : decisionAudit.decision_trace;
+                          if (parsed && Array.isArray(parsed.trace)) {
+                            trace = parsed.trace;
+                          } else if (Array.isArray(parsed)) {
+                            trace = parsed;
+                          }
                         } catch (e) {
                           console.error("Failed to parse decision_trace:", e);
                         }

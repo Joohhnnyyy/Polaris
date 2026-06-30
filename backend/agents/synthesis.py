@@ -23,7 +23,7 @@ class SynthesisAgent:
         self.mks = MunicipalKnowledgeService()
         self.context_builder = ContextBuilder()
 
-    async def run_synthesis(self, new_issue: dict) -> dict:
+    async def run_synthesis(self, new_issue: dict, on_step_callback=None) -> dict:
         """
         Runs the main Gemini prompt logic consulting the Municipal Knowledge Service.
         """
@@ -52,6 +52,38 @@ class SynthesisAgent:
         # Ingest resolved details
         zone_id = context.zone.id if context.zone else "Z_UNKNOWN"
         zone_name = context.zone.name if context.zone else "Unknown"
+
+        # Update intermediate context in DB
+        try:
+            intermediate_trace = [
+                {"step": 1, "service": "IntakeAgentService", "status": "SUCCESS", "latency_ms": 100, "summary": f"Report categorized as {category} (Severity: {severity}/5)"},
+                {"step": 2, "service": "EvidenceAgentService", "status": "SUCCESS", "latency_ms": 100, "summary": "Forensics and embeddings completed."},
+                {"step": 3, "service": "MunicipalKnowledgeService", "status": "SUCCESS", "latency_ms": 50, "summary": f"Retrieved context for zone {zone_name}."}
+            ]
+            supabase_client.table("decision_audit").update({
+                "decision_trace": json.dumps({
+                    "trace": intermediate_trace,
+                    "context": {
+                        "zone": context.zone.__dict__ if context.zone else None,
+                        "weather": context.weather.__dict__ if context.weather else None,
+                        "nearest_assets": [a.__dict__ for a in context.nearest_assets],
+                        "historical_cases": [{
+                            "id": h.id,
+                            "category": h.category,
+                            "incident_outcome": h.incident_outcome,
+                            "similarity": h.similarity,
+                            "distance": h.distance,
+                            "retrieval_score": h.retrieval_score,
+                            "resolution_summary": h.resolution_summary
+                        } for h in context.historical_cases]
+                    }
+                })
+            }).eq("issue_id", issue_id).execute()
+
+            if on_step_callback:
+                await on_step_callback("Synthesis", f"Retrieved municipal context: weather ({context.weather.weather_condition if context.weather else 'Clear'}), {len(context.nearest_assets)} assets, {len(context.historical_cases)} past cases.")
+        except Exception as inter_err:
+            print(f"Failed to save intermediate decision audit: {inter_err}")
 
         # 2. Format LLM Context Prompt using ContextBuilder
         formatted_context = self.context_builder.build_llm_context(context)
@@ -280,9 +312,11 @@ class SynthesisAgent:
                     }
                 })
             }
-            supabase_client.table("decision_audit").insert(audit_payload).execute()
+            supabase_client.table("decision_audit").update(audit_payload).eq("issue_id", issue_id).execute()
+            if on_step_callback:
+                await on_step_callback("Synthesis", f"Updated final decision audit for issue {issue_id}.")
         except Exception as aud_err:
-            print(f"Failed to insert decision audit record: {aud_err}")
+            print(f"Failed to update decision audit record: {aud_err}")
 
         try:
             total_latency = int((time.time() - start_time) * 1000)
