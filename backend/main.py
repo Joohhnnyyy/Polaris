@@ -245,6 +245,8 @@ async def create_report(
                 image_bytes, 
                 {"content-type": f"image/{file_ext}"}
             )
+            # Use persistent storage URL if upload succeeds
+            image_url = supabase_client.storage.from_("civicmind-images").get_public_url(filepath)
         except Exception as storage_err:
             print(f"Storage upload failed (falling back to local serving only): {storage_err}")
  

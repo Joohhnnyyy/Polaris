@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Nav } from "@/components/polaris/Nav";
 import { Footer } from "@/components/polaris/Footer";
 import { PageTransition } from "@/components/polaris/PageTransition";
-import { API_URL, WS_URL, safeFetchArray } from "@/lib/api";
+import { API_URL, WS_URL, safeFetchArray, resolveImageUrl } from "@/lib/api";
 
 export const Route = createFileRoute("/autopsy")({
   head: () => ({
@@ -573,9 +573,9 @@ function AutopsyPage() {
                 </Panel>
 
                 <Panel title="Image Forensics" eyebrow="Gemini Vision Multi-Modal">
-                  {issues[0]?.images && issues[0].images[0] ? (
+                  {latestIssue?.images && latestIssue.images[0] ? (
                     <div className="aspect-[4/3] rounded-lg border border-white/[0.06] overflow-hidden relative">
-                      <img src={issues[0].images[0]} alt="Forensic intake" className="w-full h-full object-cover" />
+                      <img src={resolveImageUrl(latestIssue.images[0])} alt="Forensic intake" className="w-full h-full object-cover" />
                     </div>
                   ) : (
                     <div className="aspect-[4/3] rounded-lg border border-white/[0.06] bg-[#0a0b10] relative overflow-hidden flex items-center justify-center text-white/30 font-mono text-[11px]">
@@ -583,8 +583,8 @@ function AutopsyPage() {
                     </div>
                   )}
                   <ul className="mt-3 space-y-1.5 font-mono text-[11px] text-white/60">
-                    <li>· Category: {issues[0]?.category || "Water Leak"}</li>
-                    <li>· Severity: {issues[0]?.severity || 4}/5</li>
+                    <li>· Category: {latestIssue?.category || "Water Leak"}</li>
+                    <li>· Severity: {latestIssue?.severity || 4}/5</li>
                     <li>· Forensic Class: asphalt subsidence</li>
                     <li>· Database Sync: verified ✓</li>
                   </ul>
