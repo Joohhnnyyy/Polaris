@@ -5,6 +5,8 @@
 ## About Polaris
 Polaris is an advanced, multi-agent urban operating system designed to manage and optimize municipal infrastructure maintenance. Fragmented citizen reports, real-time sensor streams, weather metrics, and historic structural data are integrated into a single, cohesive GIS intelligence dashboard. By using structured multi-modal reasoning and automated pipeline synthesis, Polaris is built to reduce dispatch latency, accurately predict cascading system failures, and generate professional communication briefs for city administrators and engineering crews.
 
+For an in-depth breakdown of the project architecture, agent specifications, and operational metrics, see the [Detailed Project Analysis](file:///Users/anshjohnson/Polaris/mdFiles/detailed_analysis.md).
+
 ---
 
 ## Deployment Links
