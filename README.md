@@ -10,8 +10,8 @@ For an in-depth breakdown of the project architecture, agent specifications, and
 ---
 
 ## Deployment Links
-* **Live Application Front-End**: [https://polaris-937410737699.us-central1.run.app](https://polaris-937410737699.us-central1.run.app)
-* **Live Backend REST API**: [https://polaris-backend-937410737699.us-central1.run.app](https://polaris-backend-937410737699.us-central1.run.app)
+* **Live Application Front-End**: [https://polaris-joohhnnyyy.vercel.app](https://polaris-joohhnnyyy.vercel.app)
+* **Live Backend REST API**: [https://polaris-4ly0.onrender.com](https://polaris-4ly0.onrender.com)
 
 ---
 
